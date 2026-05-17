@@ -5,7 +5,6 @@ raw atomic number Z (chem_metric='Z') or covalent radius
 (chem_metric='cov'). Covalent radius better reflects "structural role"
 in crystals — atoms with similar r_cov tend to play similar roles
 regardless of Z. r_cov table is precomputed lazily from pymatgen.
-"""
 
 Inputs assume a batch of crystals with the SAME composition (same atom_types and
 same N per batch). Permutation handling: external — caller passes atoms in the
