@@ -79,6 +79,8 @@ def main():
                     help="chemistry weighting in V_frac kernel; large=off, small=strict. For Z: τ=4 → ΔZ±2 ≈0.5. For cov: τ=0.5 → Δr_cov±0.5Å ≈0.5.")
     ap.add_argument("--chem_metric", default="Z", choices=["Z", "cov"],
                     help="atom-pair chemistry distance: 'Z' (atomic number) or 'cov' (covalent radius lookup).")
+    ap.add_argument("--chem_temp_per_N", default=None,
+                    help="per-N chem_temp schedule, e.g. 'N<=5:2,N>=6:8'. Overrides --chem_temp.")
     args = ap.parse_args()
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -162,11 +164,24 @@ def main():
             # Z_per_crystal for chemistry-aware kernel
             Z_gen = Z  # (B, N) — gen's compositions == current batch
             Z_pos = Z  # (B, N) — same compositions in target (current batch is the target neighborhood)
+            # per-N schedule override: parse 'N<=K:tau1,N>=L:tau2' (very lightweight)
+            chem_temp_eff = args.chem_temp
+            if args.chem_temp_per_N:
+                lo_tau = hi_tau = None; cutoff = 5
+                for rule in args.chem_temp_per_N.split(","):
+                    op, tau = rule.strip().split(":")
+                    tau = float(tau)
+                    if "<=" in op:
+                        cutoff = int(op.split("<=")[1]); lo_tau = tau
+                    elif ">=" in op:
+                        hi_tau = tau
+                if lo_tau is not None and hi_tau is not None:
+                    chem_temp_eff = lo_tau if N <= cutoff else hi_tau
             V_L, V_F = compute_V(L_hat.detach(), F_hat_bn.detach(), L_aug, F_aug,
                                  temperatures_L=temps_L, temperatures_F=temps_F,
                                  repulsion=args.repulsion,
                                  Z_gen=Z_gen, Z_pos=Z_pos,
-                                 chem_temp=args.chem_temp,
+                                 chem_temp=chem_temp_eff,
                                  chem_metric=args.chem_metric)
             gamma = 0.0 if args.no_friction else it / max(1, args.max_iter - 1)
             target_L = L_hat.detach() + (1.0 - gamma) * V_L
