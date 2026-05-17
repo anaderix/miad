@@ -581,3 +581,15 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Reinforces wide-τ-plateau finding**: it's the *presence* of any per-pair weighting that matters more than chemical correctness.
 - **Decision**: drop cov-radius variant. **Canonical default = chem-Z τ=2**.
 - **Untested**: hybrid Z·cov (sharp discriminator × soft tie-breaker), period/group encoding.
+
+## 2026-05-17 — TASK chem-fill: chem_temp=8 is new best (+45% over baseline), τ-curve is non-monotonic
+
+- **Setup**: chem_temp=1 and chem_temp=8 fill-in trainings (50k iter, repulsion=1.0).
+- **Headline**: **chem_temp=8 → match@20 = 22.5%**, beating prior best chem_temp=2 (20.5%) by 2pp and **+45% relative over baseline** (15.5%). chem_temp=1 collapses to baseline.
+- **Full τ-curve (match@20)**: 1→15.5, 2→20.5, 4→18.0, **8→22.5**, 16→19.5. **Non-monotonic with peak at τ=8, secondary at τ=2, dip at τ=4**.
+- **Per-N picture (the real story)**: different N strata want different τ. **N=4-5 → τ=2 wins** (sharp discrimination). **N=6-8 → τ=8 wins** (looser averaging on larger cells). τ=8 wins aggregate because it dominates the populous medium-N strata (n=53/200) while matching small-N.
+- **τ=1 fails because**: too restrictive. Same-element-only matching means no neighbor in target batch → V reduces to noise.
+- **τ=4 dip explained**: it's the worst-of-both — too sharp for N≥6, too loose for N=4-5.
+- **Decision**: **canonical default switches from chem_temp=2 to chem_temp=8**. Single-knob change with +45% rel match@20 gain.
+- **Highest-priority next experiment**: **per-N chem_temp schedule** (τ=2 for N≤5, τ=8 for N≥6). Could unlock additional +5-10pp.
+- **Mechanism update**: chemistry-as-prior is not "presence helps", it's "right strictness for the cell complexity". Larger N → softer chemistry. Plausible reason: larger cells have more cross-element pairs, sharper τ over-prunes them.
