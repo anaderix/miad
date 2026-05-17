@@ -593,3 +593,13 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Decision**: **canonical default switches from chem_temp=2 to chem_temp=8**. Single-knob change with +45% rel match@20 gain.
 - **Highest-priority next experiment**: **per-N chem_temp schedule** (τ=2 for N≤5, τ=8 for N≥6). Could unlock additional +5-10pp.
 - **Mechanism update**: chemistry-as-prior is not "presence helps", it's "right strictness for the cell complexity". Larger N → softer chemistry. Plausible reason: larger cells have more cross-element pairs, sharper τ over-prunes them.
+
+## 2026-05-17 — TASK chem-perN: per-N τ schedule ties chem8 (no aggregate gain)
+
+- **Setup**: `--chem_temp_per_N "N<=5:2,N>=6:8"` — predicted by chem-fill as the right schedule.
+- **Result**: perN @20 = 22.5% — **ties chem8 (22.5%)**, beats baseline +45%. Aggregate unchanged.
+- **Per-N redistribution** (the real story): perN beats c8 on N=5 (+25pp → 63%), N=7 (+10pp → 40%), but **regresses on N=8 (−12pp → 4% vs c8's 16%)**. N=8 is the biggest stratum (n=25) so the gain on small strata can't compensate.
+- **Hypothesis for N=8 regression**: training with mixed τ on different batches confuses the model on regime boundary. CSPNet weights don't know which "chemistry regime" to operate in for borderline N — averages over both. Untested vs noise (n=25, σ≈10pp).
+- **Decision**: **chem_temp=8 remains canonical default**. perN not worth the complexity given tie.
+- **Lesson**: localized per-N optima (from observation) do NOT generally compose into a globally-better schedule. The interaction between training batches at different τ matters more than the optima would predict.
+- **Next directions**: (a) multi-seed stability test on perN (cheap; 3 runs × 1h), (b) continuous N→τ schedule (smoother boundary), (c) plain chem8 100k (does it saturate?), (d) different research direction entirely (multi-force / learnable forces).
