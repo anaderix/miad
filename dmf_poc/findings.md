@@ -561,3 +561,13 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 
 - **Operational default: chem_temp=2** for aggregate match-rate. chem_temp=4 for N=6-specialist applications.
 
+
+## 2026-05-17 — TASK chem-K100 (K=100 with chem2)
+
+- **chem2 still wins at K=100 but advantage shrinks**: aggregate +6% rel (vs +32% rel at K=20).
+- **Per-N behavior splits**:
+  - "Saturation strata" (N=4-6): baseline catches up with sample budget, chem can even underperform (N=5: -13pp, N=6: -16pp at K=100). N=4: still +17pp chem advantage.
+  - "Hard strata" (N=7, 8): baseline plateaus at 28-30%, **chem unlocks +8-30pp** (N=7: 30%→60%!). Sample budget alone can't help if model can't reach those structures; chem moves model to reachable region.
+- **Mechanism insight**: chemistry's value scales with **how hard the composition is to model**. Easy compositions saturate with K; hard ones need better-aimed sampling.
+- **Recommended default**: chem_temp=2 universally. Net positive across K=20 and K=100, biggest wins on hardest strata.
+
