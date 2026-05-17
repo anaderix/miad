@@ -603,3 +603,19 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Decision**: **chem_temp=8 remains canonical default**. perN not worth the complexity given tie.
 - **Lesson**: localized per-N optima (from observation) do NOT generally compose into a globally-better schedule. The interaction between training batches at different τ matters more than the optima would predict.
 - **Next directions**: (a) multi-seed stability test on perN (cheap; 3 runs × 1h), (b) continuous N→τ schedule (smoother boundary), (c) plain chem8 100k (does it saturate?), (d) different research direction entirely (multi-force / learnable forces).
+
+## 2026-05-17 — TASK chem8-K100: chem8 holds #1 at K=100, N=7 jumps to 80%
+
+- **Setup**: same `dmf_chem8_50k.pt` evaluated at K=100, limit=200.
+- **Headline**: **chem8 K=100 @100 = 36.0%** — beats baseline (31.5%) by +14% rel, beats chem2 K=100 (33.5%) by +2.5pp. Lead shrinks vs K=20 but holds.
+- **N=7 dramatic**: chem8 = 80% vs baseline 30% (**+50pp**, 2.67× rel). The single biggest absolute win in the entire PoC. chem8 N=7 also beats chem2 N=7 by 20pp.
+- **N=8**: chem8 = 40% vs baseline 28%, beats chem2 by 4pp.
+- **First cliff crack**: chem8 lands 1/26 on N=10 (3.8%) — first non-zero result at N≥10 in the entire PoC. Suggests K=200+ may further soften cliff.
+- **Three K-regimes confirmed** (replicates chem2 K=100 story but stronger):
+  - (A) N=2-4: all saturate to 100% — budget wins
+  - (B) N=5-6: baseline catches up with K, chem can slightly hurt — budget wins  
+  - (C) N=7-8: only chem unlocks gains — chemistry wins
+  - (D) N=10: chem8 starts to crack — chemistry+budget joint effect
+- **chem8 vs chem2 net at K=100**: +2.5pp — strictly dominates chem2, mostly because chem8's N=7 dominance is so large (20pp gap there alone).
+- **Reinforced lesson**: chemistry's value scales with composition hardness, not sample budget. Cheap K can't compensate for unreachable structure regions.
+- **Status of canonical chem8**: clearly the right default. Wins K=20, K=100, both aggregate and on hardest strata.
