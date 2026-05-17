@@ -571,3 +571,13 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Mechanism insight**: chemistry's value scales with **how hard the composition is to model**. Easy compositions saturate with K; hard ones need better-aimed sampling.
 - **Recommended default**: chem_temp=2 universally. Net positive across K=20 and K=100, biggest wins on hardest strata.
 
+
+## 2026-05-17 — TASK chem-cov: covalent-radius weighting underperforms raw Z
+
+- **Setup**: V kernel weighting `exp(-(r_cov(Z_a)-r_cov(Z_b))²/τ)` with τ=0.5, vs raw Z (τ=2-16). 50k iter, repulsion=1.0, ctor-gpu.
+- **Result**: cov-radius @20 = **17.0%** — beats baseline (15.5%, +10% rel) but **worst chem-aware variant** (chem-Z τ=2: 20.5%, τ=4: 18%, τ=16: 19.5%).
+- **Counter-intuitive lesson**: a *chemically better* metric (r_cov reflects structural role) is a *worse* V-prior than a *chemically crude* metric (raw Z). Reason: V needs a **discriminator** (sharply separate species), not a **similarity** (merge species). Z-diff² discriminates cleanly; r_cov collapses most transition metals into a narrow band (r_cov ∈ 1.1-1.4 Å for nearly all common metals) → effectively chemistry-blind for metal-rich cells.
+- **Different N profile**: cov *loses* on small/easy N (2: -33pp, 3: -25pp, 6: -17pp vs baseline) but *wins* on hard N (7: +10pp, 8: +8pp). Suggests softer chemistry helps where samples are scarce; sharper chemistry helps where mode-discrimination matters.
+- **Reinforces wide-τ-plateau finding**: it's the *presence* of any per-pair weighting that matters more than chemical correctness.
+- **Decision**: drop cov-radius variant. **Canonical default = chem-Z τ=2**.
+- **Untested**: hybrid Z·cov (sharp discriminator × soft tie-breaker), period/group encoding.
