@@ -619,3 +619,13 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **chem8 vs chem2 net at K=100**: +2.5pp — strictly dominates chem2, mostly because chem8's N=7 dominance is so large (20pp gap there alone).
 - **Reinforced lesson**: chemistry's value scales with composition hardness, not sample budget. Cheap K can't compensate for unreachable structure regions.
 - **Status of canonical chem8**: clearly the right default. Wins K=20, K=100, both aggregate and on hardest strata.
+
+## 2026-05-17 — TASK chem8-K200: cliff is reach-bound, K-budget plateaus
+
+- **Setup**: same chem8 ckpt evaluated at K=200, limit=200.
+- **Aggregate**: 39.5% (+3.5pp over K=100). Clear diminishing returns: K=20→100 gave +13.5pp/+60% rel, K=100→200 only +3.5pp/+10% rel.
+- **N=6 saturated to 100%** (+22pp from K=100). **N=8 climbing** to 52% (+12pp). N=7 stuck at 80%, N=10 stuck at 1/26 (3.8%).
+- **Critical diagnostic**: N=10 stays at exactly the same 1 match between K=100 and K=200. **The cliff is architectural/training-bound, not sampling-bound**. Doubling K bought zero new N≥10 matches.
+- **Therefore**: further gains on N≥10 require capacity (bigger CSPNet), training time (100k+ iter), curriculum on big-N, or coordination-aware architecture. Knob tuning has hit its ceiling.
+- **PoC arc**: 15.5% → 39.5% via chem_temp=8 + K=200 (2.55× match-rate gain).
+- **Frontier strata**: N=8 (still gaining at K=200) is the cheapest direction for more aggregate. N≥10 requires deeper changes.
