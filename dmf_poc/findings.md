@@ -629,3 +629,17 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Therefore**: further gains on N≥10 require capacity (bigger CSPNet), training time (100k+ iter), curriculum on big-N, or coordination-aware architecture. Knob tuning has hit its ceiling.
 - **PoC arc**: 15.5% → 39.5% via chem_temp=8 + K=200 (2.55× match-rate gain).
 - **Frontier strata**: N=8 (still gaining at K=200) is the cheapest direction for more aggregate. N≥10 requires deeper changes.
+
+## 2026-05-17 — TASK chem8-100k: longer training OVERFITS
+
+- **Setup**: chem8 trained 100k iter (vs 50k canonical), same hyperparams.
+- **Result**: **regression at both K=20 (22.5→21.0%) and K=100 (36.0→34.5%)**. Match@1 improves (3% vs 2%) but match@K shrinks — model concentrates top-K on fewer modes.
+- **Catastrophic per-N**:
+  - **N=7 K=100: 80% → 40% (−40pp)**. The single biggest PoC win was a partial generalization, lost when memorization dominates.
+  - **N=9, N=10**: cliff crack disappears (20→0, 3.8→0).
+  - N=2,3,4 at K=20: −5 to −33pp (top-K diversity collapse).
+  - N=6, N=8: mild gains (+5pp, +8pp) — strata where mode-attraction works.
+- **Mechanism**: long training + friction γ→1 in last 10k → V drift becomes fine-grained correction toward memorized train structures. Generalization to hard strata (no close train neighbors) lost.
+- **Decision**: **50k iter is approximately optimal for chem8**. Training-time tuning exhausted.
+- **Critical insight**: chem8 hard-stratum wins were partially "lucky" — they evaporate with more confident model. Real architectural improvement needed to make N=7-10 robust.
+- **Implications for paper/PoC**: report 50k chem8 as the headline. Use this 100k result as a regularization/overfitting diagnostic — a "training-time vs generalization" curve worth including.
