@@ -527,3 +527,18 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - DiffCSP `mp_gen` and MiAD CSPNet share structure but **incompatible** state_dict due to `latent_dim` mismatch (0 vs 256) routing time differently. Cross-loading not feasible. (See main session notes.)
 
 - DiffCSP env: `numpy<2` required (pymatgen 2023.8.10 uses `np.deprecate` removed in numpy 2.0); `setuptools<81` required (`pkg_resources` removed in 81+). Both pins documented in remote venv.
+
+## 2026-05-17 — TASK chem-v (chemistry-aware V kernel — positive)
+
+- **Per-atom-pair Z-weighted V_frac** (`exp(-(Z_a-Z_b)²/chem_temp)`) with chem_temp=4 gives **+16% relative match@20** (15.5% → 18.0%) on identical ctor-gpu setup, K=20 limit=200.
+
+- **Largest wins on big strata**: N=4 (n=24): +12pp. N=6 (n=18): **+17pp**. N=8 (n=25): +4pp.
+
+- **N≥9 cliff unchanged** — chemistry doesn't fix architectural coordination problem (expected). Cliff is about *generating* coherent multi-atom configurations, not *matching* same-element atoms.
+
+- **Mechanism**: noise reduction in V's drift signal. Without chem-weighting, V drifts toward geometric centroid of same-N but different-composition batch peers. With weighting, V preferentially aligns same-element positions across compositions → cleaner composition-conditional drift.
+
+- **Backward-compatible**: `chem_temp=1e9` (default) → exp(-x/inf)=1 → identical to original V. Confirmed by smoke test.
+
+- **Open**: chem_temp sweep, covalent-radii-weighted variant, K=100 with chem-v.
+
