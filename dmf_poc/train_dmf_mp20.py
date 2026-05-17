@@ -75,6 +75,8 @@ def main():
                     help="extra positives sampled from bank per batch")
     ap.add_argument("--no_friction", action="store_true",
                     help="disable friction γ schedule; use direct drift target (as in reference DM impl)")
+    ap.add_argument("--chem_temp", type=float, default=1e9,
+                    help="chemistry weighting in V_frac kernel; large=off, small=strict same-element. Try 4-20 to enable.")
     args = ap.parse_args()
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -155,9 +157,14 @@ def main():
                     L_mem, F_mem = sampled
                     L_aug = torch.cat([L_pos, L_mem], dim=0)
                     F_aug = torch.cat([F_pos, F_mem], dim=0)
+            # Z_per_crystal for chemistry-aware kernel
+            Z_gen = Z  # (B, N) — gen's compositions == current batch
+            Z_pos = Z  # (B, N) — same compositions in target (current batch is the target neighborhood)
             V_L, V_F = compute_V(L_hat.detach(), F_hat_bn.detach(), L_aug, F_aug,
                                  temperatures_L=temps_L, temperatures_F=temps_F,
-                                 repulsion=args.repulsion)
+                                 repulsion=args.repulsion,
+                                 Z_gen=Z_gen, Z_pos=Z_pos,
+                                 chem_temp=args.chem_temp)
             gamma = 0.0 if args.no_friction else it / max(1, args.max_iter - 1)
             target_L = L_hat.detach() + (1.0 - gamma) * V_L
             target_F = (F_hat_bn.detach() + (1.0 - gamma) * V_F) % 1.0

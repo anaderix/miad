@@ -75,18 +75,37 @@ def compute_V_frac(
     F_gen: Tensor,
     F_pos: Tensor,
     temperatures: list[float],
+    Z_gen: Tensor | None = None,
+    Z_pos: Tensor | None = None,
+    chem_temp: float = 1e9,
 ) -> Tensor:
     """Multi-temperature drift on fractional coords with torus metric.
 
     F_gen: (B, N, 3)
     F_pos: (B', N, 3) — same N and same canonical atom order as F_gen.
-    Returns V_F: (B, N, 3) — drift vectors in the torus tangent space
-    (each component in (-0.5, 0.5]).
+    Z_gen: optional (B, N) atomic numbers per atom in F_gen.
+    Z_pos: optional (B', N) atomic numbers per atom in F_pos.
+    chem_temp: softness of per-atom-pair chemistry weighting. Large (default
+        1e9) = backward-compat (chemistry-blind). Small = strict same-element
+        matching. Reasonable: τ=4 → Z-diff ±2 weighs ≈0.5.
+    Returns V_F: (B, N, 3) — drift vectors in the torus tangent space.
     """
     # pairwise torus diff: (B, B', N, 3)
     diff = torus_diff(F_gen.unsqueeze(1), F_pos.unsqueeze(0))
-    # squared dist per-crystal, summed over atoms and 3 dims: (B, B')
-    d2 = diff.pow(2).sum(dim=(-1, -2))
+    # squared per-atom dist (over 3 dims): (B, B', N)
+    d2_per_atom = diff.pow(2).sum(dim=-1)
+
+    if Z_gen is not None and Z_pos is not None and chem_temp < 1e8:
+        # chemistry-aware atom-pair weighting
+        Zg = Z_gen.unsqueeze(1).float()  # (B, 1, N)
+        Zp = Z_pos.unsqueeze(0).float()  # (1, B', N)
+        chem_w = torch.exp(-(Zg - Zp).pow(2) / chem_temp)  # (B, B', N)
+        # weighted per-atom contribution to the crystal-level distance
+        d2 = (d2_per_atom * chem_w).sum(dim=-1)
+        # also pre-multiply diff itself for the drift integral below
+        diff = diff * chem_w.unsqueeze(-1)
+    else:
+        d2 = d2_per_atom.sum(dim=-1)
 
     V_acc = torch.zeros_like(F_gen)
     for tau in temperatures:
@@ -112,6 +131,9 @@ def compute_V(
     temperatures_L: list[float] = (0.5, 1.0, 2.0),
     temperatures_F: list[float] = (0.02, 0.05, 0.2),
     repulsion: float = 0.0,
+    Z_gen: Tensor | None = None,
+    Z_pos: Tensor | None = None,
+    chem_temp: float = 1e9,
 ) -> tuple[Tensor, Tensor]:
     """Joint drift on (lattice, frac). Independent per modality, multi-temperature.
 
@@ -120,12 +142,13 @@ def compute_V(
     Repel uses the same kernel but with `gen` as both sides (excluding self).
     """
     V_L = compute_V_lattice(L_gen, L_pos, list(temperatures_L))
-    V_F = compute_V_frac(F_gen, F_pos, list(temperatures_F))
+    V_F = compute_V_frac(F_gen, F_pos, list(temperatures_F),
+                         Z_gen=Z_gen, Z_pos=Z_pos, chem_temp=chem_temp)
     if repulsion > 0.0:
-        # repulsion from other gen samples: V_attract(gen -> gen) but negated
-        # mask self by setting diagonal to large distance
         V_L_rep = compute_V_lattice(L_gen, L_gen, list(temperatures_L))
-        V_F_rep = compute_V_frac(F_gen, F_gen, list(temperatures_F))
+        # repulsion uses same chem-weighting (gen vs gen — same Z's)
+        V_F_rep = compute_V_frac(F_gen, F_gen, list(temperatures_F),
+                                 Z_gen=Z_gen, Z_pos=Z_gen, chem_temp=chem_temp)
         V_L = V_L - repulsion * V_L_rep
         V_F = V_F - repulsion * V_F_rep
     return V_L, V_F
