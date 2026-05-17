@@ -542,3 +542,22 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 
 - **Open**: chem_temp sweep, covalent-radii-weighted variant, K=100 with chem-v.
 
+
+## 2026-05-17 — TASK chem-sweep (chem_temp ∈ {2, 4, 16})
+
+- **All chem variants beat baseline by 16-32% on match@20** (limit=200, K=20):
+  - baseline: 15.5%
+  - chem=2 (sharp): **20.5%** (best aggregate, +32%)
+  - chem=4: 18.0% (+16%)
+  - chem=16 (loose): 19.5% (+26%)
+
+- **Chemistry mechanism is robust to temperature choice** — even very loose (Z-diff ±4 weighs 0.37) gives most of the gain. Just having per-pair Z-weighting is the key intervention; exact strictness matters less.
+
+- **Per-N optimum varies**:
+  - N=4 (24 comps): chem=2 wins big (79% vs 50% baseline)
+  - N=6 (18 comps): chem=4 wins (56% vs 39%)
+  - N=8 (25 comps): chem=2 and chem=4 tie at 12% vs baseline 8%
+  - N≥10: all 0% — cliff is architectural, not chemistry-fixable
+
+- **Operational default: chem_temp=2** for aggregate match-rate. chem_temp=4 for N=6-specialist applications.
+
