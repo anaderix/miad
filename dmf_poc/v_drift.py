@@ -1,5 +1,12 @@
 """Drift field V for conditional CSP-DMF on (lattice, frac).
 
+Includes optional chemistry-aware per-atom-pair weighting via either
+raw atomic number Z (chem_metric='Z') or covalent radius
+(chem_metric='cov'). Covalent radius better reflects "structural role"
+in crystals — atoms with similar r_cov tend to play similar roles
+regardless of Z. r_cov table is precomputed lazily from pymatgen.
+"""
+
 Inputs assume a batch of crystals with the SAME composition (same atom_types and
 same N per batch). Permutation handling: external — caller passes atoms in the
 same canonical order across the batch (e.g. sorted by atomic number, then by
@@ -23,6 +30,31 @@ from __future__ import annotations
 
 import torch
 from torch import Tensor
+
+
+# Lazy-loaded covalent-radius lookup table (Å), indexed by atomic number Z.
+# Falls back to 1.0 Å for missing/extra entries (e.g. Z=0 padding).
+_R_COV: Tensor | None = None
+
+
+def _load_cov_radii(device: torch.device) -> Tensor:
+    """Return (101,) tensor where index Z gives covalent radius in Å."""
+    global _R_COV
+    if _R_COV is None or _R_COV.device != device:
+        radii = torch.full((101,), 1.0, dtype=torch.float32)
+        try:
+            from pymatgen.core import Element
+            for z in range(1, 101):
+                try:
+                    el = Element.from_Z(z)
+                    if el.atomic_radius is not None:
+                        radii[z] = float(el.atomic_radius)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        _R_COV = radii.to(device)
+    return _R_COV
 
 
 def torus_diff(f_a: Tensor, f_b: Tensor) -> Tensor:
@@ -78,6 +110,7 @@ def compute_V_frac(
     Z_gen: Tensor | None = None,
     Z_pos: Tensor | None = None,
     chem_temp: float = 1e9,
+    chem_metric: str = "Z",
 ) -> Tensor:
     """Multi-temperature drift on fractional coords with torus metric.
 
@@ -87,7 +120,10 @@ def compute_V_frac(
     Z_pos: optional (B', N) atomic numbers per atom in F_pos.
     chem_temp: softness of per-atom-pair chemistry weighting. Large (default
         1e9) = backward-compat (chemistry-blind). Small = strict same-element
-        matching. Reasonable: τ=4 → Z-diff ±2 weighs ≈0.5.
+        matching. For chem_metric='Z': τ=4 → Z-diff ±2 weighs ≈0.5.
+        For chem_metric='cov': τ=0.5 → r_cov-diff ±0.5 Å weighs ≈0.5.
+    chem_metric: 'Z' (raw atomic number) or 'cov' (covalent radius lookup).
+        Covalent radius better reflects structural-role similarity.
     Returns V_F: (B, N, 3) — drift vectors in the torus tangent space.
     """
     # pairwise torus diff: (B, B', N, 3)
@@ -97,9 +133,14 @@ def compute_V_frac(
 
     if Z_gen is not None and Z_pos is not None and chem_temp < 1e8:
         # chemistry-aware atom-pair weighting
-        Zg = Z_gen.unsqueeze(1).float()  # (B, 1, N)
-        Zp = Z_pos.unsqueeze(0).float()  # (1, B', N)
-        chem_w = torch.exp(-(Zg - Zp).pow(2) / chem_temp)  # (B, B', N)
+        if chem_metric == "cov":
+            r_cov = _load_cov_radii(F_gen.device)
+            Vg = r_cov[Z_gen.clamp(0, 100).long()].unsqueeze(1)  # (B, 1, N) — radii in Å
+            Vp = r_cov[Z_pos.clamp(0, 100).long()].unsqueeze(0)  # (1, B', N)
+        else:  # 'Z'
+            Vg = Z_gen.unsqueeze(1).float()
+            Vp = Z_pos.unsqueeze(0).float()
+        chem_w = torch.exp(-(Vg - Vp).pow(2) / chem_temp)  # (B, B', N)
         # weighted per-atom contribution to the crystal-level distance
         d2 = (d2_per_atom * chem_w).sum(dim=-1)
         # also pre-multiply diff itself for the drift integral below
@@ -134,6 +175,7 @@ def compute_V(
     Z_gen: Tensor | None = None,
     Z_pos: Tensor | None = None,
     chem_temp: float = 1e9,
+    chem_metric: str = "Z",
 ) -> tuple[Tensor, Tensor]:
     """Joint drift on (lattice, frac). Independent per modality, multi-temperature.
 
@@ -143,12 +185,14 @@ def compute_V(
     """
     V_L = compute_V_lattice(L_gen, L_pos, list(temperatures_L))
     V_F = compute_V_frac(F_gen, F_pos, list(temperatures_F),
-                         Z_gen=Z_gen, Z_pos=Z_pos, chem_temp=chem_temp)
+                         Z_gen=Z_gen, Z_pos=Z_pos, chem_temp=chem_temp,
+                         chem_metric=chem_metric)
     if repulsion > 0.0:
         V_L_rep = compute_V_lattice(L_gen, L_gen, list(temperatures_L))
         # repulsion uses same chem-weighting (gen vs gen — same Z's)
         V_F_rep = compute_V_frac(F_gen, F_gen, list(temperatures_F),
-                                 Z_gen=Z_gen, Z_pos=Z_gen, chem_temp=chem_temp)
+                                 Z_gen=Z_gen, Z_pos=Z_gen, chem_temp=chem_temp,
+                                 chem_metric=chem_metric)
         V_L = V_L - repulsion * V_L_rep
         V_F = V_F - repulsion * V_F_rep
     return V_L, V_F
