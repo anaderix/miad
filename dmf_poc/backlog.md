@@ -10,6 +10,10 @@ Pick from here when current task is done. Move completed items to `findings.md` 
 
 - **chem8-S full pipeline** — scale up: n=1000, max_steps=1500, real E_hull via MP phase diagram (download `2023-02-07-ppd-mp.pkl` or build from pymatgen MPRester). Tighter comparison to MiAD paper. ~8h compute.
 
+- **chem-temp × DNG sweep** — map the CSP↔DNG trade-off curve. Retrain & DNG-relax for chem2, chem16. Hypothesis: monotonic — sharper chem hurts S more, looser chem ≈ baseline. ~6h.
+
+- **chem8 × repulsion sweep** — does lower repulsion preserve DNG quality while keeping chem8's CSP wins? Try chem8 with `--repulsion 0.5` and `0.0`. ~4h.
+
 ## Medium priority
 
 - **Larger capacity** (CSPNet 8 layers, hidden_dim 768) with chem8 — does cliff (N≥10) crack?

@@ -675,3 +675,19 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **"Mode collapse to train" concern overstated**: Nv=81% means most stable+unique gen are not in train. chem8 lands NEAR train basins but not ON specific train structures.
 - **Comparison caveats**: our S~ uses ΔE-vs-train-baseline, not MP E_hull. n=200 (not 10k). max_steps=500 (not 1500). All limitations narrow the strict comparability but order-of-magnitude conclusion (PoC ≈ DiffCSP-level DNG) holds.
 - **Bottleneck identified**: improving DMF further must focus on **physical-plausibility** of raw output. Knob tuning (chem_temp) has hit its limit; the next gains require model-side encoding of distance/coordination constraints.
+
+## 2026-05-18 — TASK baseline-S: REVERSAL — baseline beats chem8 on DNG
+
+- **Setup**: baseline_50k (no chem, repulsion=1.0) DNG-relax control. 200 samples, same seed as chem8 case.
+- **Result**: baseline **wins every stability metric**: converged 20.5% (chem8: 15.5), S~ 17.5% (vs 10.5), **S~·U·Nv = 12.5% (vs 8.5)**, mean force 5.9 eV/Å (vs 7.3), mean E -3.78 eV/atom (vs -3.08).
+- **Headline trade-off**: chem8 wins CSP (+45% rel match@20) but loses DNG (-32% rel S~·U·Nv). The chem-attraction signal that helped find specific GT structures HURTS general-purpose structure generation.
+- **Mechanism hypothesis**: per-pair chem weighting `exp(-(Z_a-Z_b)²/8)` over-specializes V to a *specific* train-target structure → sharp atom placements that CHGNet can't relax (high force, far from minima). Baseline's chemistry-blind V averages over all atoms → smoother drift → more relaxable structures.
+- **Major implication**: **TWO canonical defaults are needed**:
+  - **canonical-CSP** = chem8 (22.5% match@20)
+  - **canonical-DNG** = baseline (12.5% S~·U·Nv — in MiAD paper ballpark!)
+- **Critical PoC self-correction**: chem-fill's celebrated "chem8 best" was a CSP-centric optimization. We missed the DNG penalty for 4 days. Lesson: optimize for the actual task metric, not match@K.
+- **DNG numbers comparable to literature** (under proxy S):
+  - baseline S~·U·Nv = 12.5% ≈ MiAD paper (11-12%)
+  - chem8 S~·U·Nv = 8.5% ≈ DiffCSP paper (7-8%)
+  - These match the "MiAD beats DiffCSP" pattern but via opposite mechanism — our chem8 is the "specialized" variant that hurts DNG, vs MiAD where mirage atoms HELP.
+- **Open**: does chem2 or chem16 land between? Need DNG-relax on those (need retrains). Hypothesis: monotonic-ish — looser chem (chem16) → closer to baseline → higher S; sharper chem (chem2) → even worse than chem8.
