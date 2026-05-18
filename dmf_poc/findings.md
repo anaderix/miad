@@ -664,3 +664,14 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Decision**: drop both schedule variants (perN, linear). Use uniform chem_temp=8 as canonical. Per-N specialization should be done via **separate models**, not training-time schedule.
 - **Useful general lesson**: hyperparameters of the LOSS (chem_temp, repulsion, friction) are problematic to vary per-batch — optimizer can't converge on a moving loss landscape.
 - **Environment incident**: machine restart wiped `/tmp/` → lost venv and ALL ckpt files. Eval JSONs survived in `~/miad/dmf_poc/cache/`. Need to rebuild env + retrain canonical chem8_50k to resume work.
+
+## 2026-05-18 — TASK chem8-S: real DNG metrics via CHGNet Stability proxy
+
+- **Setup**: chem8_50k (re-trained after `/tmp/` wipe), 200 compositions sampled from train prior, CHGNet relax 500 steps, S-proxy = converged AND |ΔE|≤0.3 eV/atom vs per-composition train baseline.
+- **Headline**: **S~·U·Nv = 8.5%** (17/200) — **in DiffCSP ballpark** (paper: 7-8%). MiAD reports 11-12% S·U·Nv.
+- **Stability is the only discriminative dimension**: V=100, S~=10.5, U|S~=100, Nv|S~U=81. DNG-lite without S filter saturated at 99% across the board (useless); adding CHGNet exposes the real signal.
+- **Convergence diagnostic**: train baselines converge in <0.5s/struct (200/200 = 100% in 42s); gen takes ~29s/struct average and **only 31/200 converge** (15.5%). Most chem8 outputs are 140× slower-to-converge → far from minima. Mean final force 7.3 eV/Å (train: <0.1).
+- **When chem8 converges, it often converges near the right energy**: 21/31 (67%) of converged gen are within 0.3 eV/atom of train baseline. Mode-attraction works *if* the model output is close enough to a minimum to relax into it.
+- **"Mode collapse to train" concern overstated**: Nv=81% means most stable+unique gen are not in train. chem8 lands NEAR train basins but not ON specific train structures.
+- **Comparison caveats**: our S~ uses ΔE-vs-train-baseline, not MP E_hull. n=200 (not 10k). max_steps=500 (not 1500). All limitations narrow the strict comparability but order-of-magnitude conclusion (PoC ≈ DiffCSP-level DNG) holds.
+- **Bottleneck identified**: improving DMF further must focus on **physical-plausibility** of raw output. Knob tuning (chem_temp) has hit its limit; the next gains require model-side encoding of distance/coordination constraints.

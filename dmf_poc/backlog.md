@@ -6,12 +6,9 @@ Pick from here when current task is done. Move completed items to `findings.md` 
 
 - **~~chem8-DNG (DNG-lite, V+U+Nv)~~** — DONE 2026-05-18. NULL result without Stability. See `result-chem8-DNG.md`. Triggered next task:
 
-- **chem8-S (Stability filter via CHGNet)** — gating step for real DNG numbers. Plan:
-  1. `pip install chgnet` on ctor-gpu venv.
-  2. Adapt `lib/prerelaxations/prerelax_chgnet.py` for our 1000-CIF input.
-  3. Relax all 1000 gen structures (1500 steps each); E_hull via MP phase diagram pickle (need to source).
-  4. Re-compute U and Nv only on stable subset → S, S·U, S·U·Nv numbers comparable to MiAD/DiffCSP Table 2.
-  - Effort: ~1d setup + 4-8h compute.
+- **~~chem8-S (Stability via CHGNet proxy)~~** — DONE 2026-05-18. S~·U·Nv = 8.5% (n=200), in DiffCSP ballpark. See `result-chem8-S.md`.
+
+- **chem8-S full pipeline** — scale up: n=1000, max_steps=1500, real E_hull via MP phase diagram (download `2023-02-07-ppd-mp.pkl` or build from pymatgen MPRester). Tighter comparison to MiAD paper. ~8h compute.
 
 ## Medium priority
 
