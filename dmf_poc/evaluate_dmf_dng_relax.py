@@ -88,6 +88,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--train_csv", default=str(Path.home() / "diffcsp/data/mp_20/train.csv"))
+    ap.add_argument("--train_cache", default=str(Path(__file__).parent / "cache/mp20_train.pt"),
+                    help="fallback to mp20_loader cache (by_N dict) if train_csv missing.")
     ap.add_argument("--n_gen", type=int, default=200)
     ap.add_argument("--seed", type=int, default=12345)
     ap.add_argument("--max_steps", type=int, default=500)
@@ -103,18 +105,35 @@ def main():
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
 
-    # 1. Parse train
-    print(f"parsing train CIFs ...")
-    df = pd.read_csv(args.train_csv)
-    parsed = p_map(parse_train_cif, df["cif"].tolist())
-    train_items = [p for p in parsed if p is not None]
+    # 1. Load train (CSV preferred; cache fallback)
     train_by_comp = defaultdict(list)
-    for s, Z, N in train_items:
-        train_by_comp[Z].append(s)
+    n_train = 0
+    if Path(args.train_csv).exists():
+        print(f"parsing train CIFs from {args.train_csv} ...")
+        df = pd.read_csv(args.train_csv)
+        parsed = p_map(parse_train_cif, df["cif"].tolist())
+        for p in parsed:
+            if p is not None:
+                s, Z, N = p
+                train_by_comp[Z].append(s); n_train += 1
+    else:
+        print(f"train_csv missing; loading cache {args.train_cache}")
+        cache = torch.load(args.train_cache, weights_only=False)
+        for N, items in cache["by_N"].items():
+            for it in items:
+                L = it["L"].cpu().numpy() if hasattr(it["L"], "cpu") else it["L"]
+                F = it["F"].cpu().numpy() if hasattr(it["F"], "cpu") else it["F"]
+                Z = it["Z"].cpu().numpy().tolist() if hasattr(it["Z"], "cpu") else list(it["Z"])
+                Z_int = [int(z) for z in Z]
+                try:
+                    s = Structure(Lattice(L), Z_int, F, coords_are_cartesian=False)
+                    train_by_comp[tuple(sorted(Z_int))].append(s); n_train += 1
+                except Exception:
+                    pass
     comp_keys = list(train_by_comp.keys())
     comp_counts = np.array([len(train_by_comp[c]) for c in comp_keys], dtype=np.float64)
     comp_probs = comp_counts / comp_counts.sum()
-    print(f"  {len(train_items)} train structs, {len(comp_keys)} unique compositions")
+    print(f"  {n_train} train structs, {len(comp_keys)} unique compositions")
 
     # 2. Sample compositions
     sampled_idx = rng.choice(len(comp_keys), size=args.n_gen, p=comp_probs, replace=True)
