@@ -654,3 +654,13 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Decision**: this run is INFRA validation only. Real conclusions require Stability via CHGNet+MP phase diagram. Added to high-priority backlog as `chem8-S` task.
 - **What we proved**: pipeline works end-to-end. Composition sampler, generation, V/U/Nv computation all correct. Just gated on missing Stability filter.
 - **What we did NOT prove**: whether chem8 produces physically plausible crystals, or how it compares to MiAD/DiffCSP S·U·Nv numbers.
+
+## 2026-05-18 — TASK chem-linear: continuous τ(N)=N WORSE than baseline
+
+- **Setup**: linear τ(N) = N. 50k iter, repulsion=1.0.
+- **Result**: match@20 = 14.0% — **below baseline (15.5%)**, far below chem8 (22.5%). Cleanest negative since cov.
+- **Per-N**: N=2 100%, N=3 75%, N=4 38% (vs base 50%), N=7 10%, N=8 4%. Worst regression on **N=4** (-13pp) — because linear unwittingly enforces τ=4 = the chem-fill dip.
+- **Refutes "regime confusion" hypothesis** from perN: if smoothing the boundary helped, continuous should beat step. It doesn't. Real issue is **multi-τ training is fundamentally harder than single-τ** — non-stationary loss landscape across batches.
+- **Decision**: drop both schedule variants (perN, linear). Use uniform chem_temp=8 as canonical. Per-N specialization should be done via **separate models**, not training-time schedule.
+- **Useful general lesson**: hyperparameters of the LOSS (chem_temp, repulsion, friction) are problematic to vary per-batch — optimizer can't converge on a moving loss landscape.
+- **Environment incident**: machine restart wiped `/tmp/` → lost venv and ALL ckpt files. Eval JSONs survived in `~/miad/dmf_poc/cache/`. Need to rebuild env + retrain canonical chem8_50k to resume work.
