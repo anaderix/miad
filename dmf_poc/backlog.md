@@ -4,14 +4,14 @@ Pick from here when current task is done. Move completed items to `findings.md` 
 
 ## High priority
 
-- **chem8-DNG (S.U.N. with empirical-prior composition sampling)** — currently chem8 only does CSP (composition given). For real S.U.N. evaluation:
-  1. Sample (N, atom_types) from MP-20-train empirical distribution as a prior.
-  2. Run chem8 generation per sampled composition (existing `evaluate_dmf_csp.py`-style pipeline but with prior-sampled compositions instead of test.csv).
-  3. Relax with CHGNet (cheaper) via existing `lib/prerelaxations/`.
-  4. Compute S.U.N. via `lib/metrics/`.
-  5. Compare with DiffCSP-baseline numbers in MiAD paper.
-  - Why: match-rate gain (15.5→39.5%) needs to translate to a real generative metric. Expect higher Stability (mode-attraction helps); risk: lower Novelty (model lands on train-neighbors).
-  - Effort: ~1d (composition sampler is new; relaxation pipeline exists).
+- **~~chem8-DNG (DNG-lite, V+U+Nv)~~** — DONE 2026-05-18. NULL result without Stability. See `result-chem8-DNG.md`. Triggered next task:
+
+- **chem8-S (Stability filter via CHGNet)** — gating step for real DNG numbers. Plan:
+  1. `pip install chgnet` on ctor-gpu venv.
+  2. Adapt `lib/prerelaxations/prerelax_chgnet.py` for our 1000-CIF input.
+  3. Relax all 1000 gen structures (1500 steps each); E_hull via MP phase diagram pickle (need to source).
+  4. Re-compute U and Nv only on stable subset → S, S·U, S·U·Nv numbers comparable to MiAD/DiffCSP Table 2.
+  - Effort: ~1d setup + 4-8h compute.
 
 ## Medium priority
 

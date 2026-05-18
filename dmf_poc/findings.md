@@ -643,3 +643,14 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Decision**: **50k iter is approximately optimal for chem8**. Training-time tuning exhausted.
 - **Critical insight**: chem8 hard-stratum wins were partially "lucky" — they evaporate with more confident model. Real architectural improvement needed to make N=7-10 robust.
 - **Implications for paper/PoC**: report 50k chem8 as the headline. Use this 100k result as a regularization/overfitting diagnostic — a "training-time vs generalization" curve worth including.
+
+## 2026-05-18 — TASK chem8-DNG: V/U/Nv saturate at 99% (NULL result without Stability)
+
+- **Setup**: chem8_50k generated 1000 structures from MP-20-train composition prior. Computed V (validity), U|V (per-comp pairwise unique), Nv|U (vs train).
+- **Numbers**: V=100%, U=99.9%, Nv=98.6%, combined=98.5%. **Per-N: N≥5 has 100% novelty** (no train overlap whatsoever).
+- **CRITICAL CAVEAT**: these numbers are **not meaningful** as-is. Without Stability filter, structures are flagged "novel" because they're far from train in lattice/coord space, not because they're new valid crystals. Any noise-emitting model would score similarly.
+- **Cross-validation**: at K=1 (DNG style), N=5 train-match rate is effectively 0%, consistent with match@K showing single-sample success rate <5% for N=5. The "novelty" is just "didn't randomly land on a train structure with K=1".
+- **Compose comparison**: MP-20 train has ~10k unique compositions in 27k structures — significant per-composition multiplicity. Empirical composition prior reproduces train N-skew (peak N=4, long tail to N=20).
+- **Decision**: this run is INFRA validation only. Real conclusions require Stability via CHGNet+MP phase diagram. Added to high-priority backlog as `chem8-S` task.
+- **What we proved**: pipeline works end-to-end. Composition sampler, generation, V/U/Nv computation all correct. Just gated on missing Stability filter.
+- **What we did NOT prove**: whether chem8 produces physically plausible crystals, or how it compares to MiAD/DiffCSP S·U·Nv numbers.
