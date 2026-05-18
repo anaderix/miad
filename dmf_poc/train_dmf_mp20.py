@@ -81,6 +81,8 @@ def main():
                     help="atom-pair chemistry distance: 'Z' (atomic number) or 'cov' (covalent radius lookup).")
     ap.add_argument("--chem_temp_per_N", default=None,
                     help="per-N chem_temp schedule, e.g. 'N<=5:2,N>=6:8'. Overrides --chem_temp.")
+    ap.add_argument("--chem_temp_linear", default=None,
+                    help="continuous τ(N) = a + b·N, format 'a,b'. e.g. '0,1' → τ=N. Overrides --chem_temp & --chem_temp_per_N.")
     args = ap.parse_args()
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -164,9 +166,12 @@ def main():
             # Z_per_crystal for chemistry-aware kernel
             Z_gen = Z  # (B, N) — gen's compositions == current batch
             Z_pos = Z  # (B, N) — same compositions in target (current batch is the target neighborhood)
-            # per-N schedule override: parse 'N<=K:tau1,N>=L:tau2' (very lightweight)
+            # τ schedule overrides (continuous wins over step wins over scalar)
             chem_temp_eff = args.chem_temp
-            if args.chem_temp_per_N:
+            if args.chem_temp_linear:
+                a, b = [float(x) for x in args.chem_temp_linear.split(",")]
+                chem_temp_eff = max(1e-3, a + b * N)
+            elif args.chem_temp_per_N:
                 lo_tau = hi_tau = None; cutoff = 5
                 for rule in args.chem_temp_per_N.split(","):
                     op, tau = rule.strip().split(":")
