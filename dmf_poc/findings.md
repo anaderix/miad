@@ -691,3 +691,20 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
   - chem8 S~·U·Nv = 8.5% ≈ DiffCSP paper (7-8%)
   - These match the "MiAD beats DiffCSP" pattern but via opposite mechanism — our chem8 is the "specialized" variant that hurts DNG, vs MiAD where mirage atoms HELP.
 - **Open**: does chem2 or chem16 land between? Need DNG-relax on those (need retrains). Hypothesis: monotonic-ish — looser chem (chem16) → closer to baseline → higher S; sharper chem (chem2) → even worse than chem8.
+
+## 2026-05-18 — TASK chem16-S: trade-off curve is monotonic, chem16 is the joint Pareto winner
+
+- **Setup**: chem16_50k DNG-relax. Same pipeline as chem8/baseline.
+- **Result**: S~·U·Nv = **11.5%**, between baseline (12.5%) and chem8 (8.5%). **Monotonic CSP↔DNG trade-off in chem_temp confirmed**: looser chem → less DNG penalty + less CSP gain.
+- **Trade-off curve** (with chem_temp increasing): chem8 → chem16 → baseline corresponds to CSP 22.5→19.5→15.5%, DNG 8.5→11.5→12.5%.
+- **Surprise: chem16 has the LOWEST mean final force** (4.34 vs baseline 5.90 vs chem8 7.34) — softer chemistry produces the smoothest output, even smoother than chemistry-blind baseline. But S~ is mid (14.5%) because chem16 lands at *some* minimum, just not always the correct-composition one.
+- **Mechanism refined**: smoothness-vs-precision trade-off in V kernel. baseline = smooth, low per-atom precision, lands near correct minimum (high S~). chem8 = sharp per-atom, but high disagreement = strain (low S~, high force). chem16 = soft per-atom + smoothness = lowest forces but slightly displaced minima (mid S~).
+- **chem16 is the joint Pareto winner** previously overlooked: only -1pp DNG vs baseline, +4pp CSP. Best balance if both metrics matter.
+- **Pareto rates**: baseline→chem16 gives 4pp CSP for 1pp DNG (4:1 ratio); chem16→chem8 gives 3pp CSP for 3pp DNG (1:1). The DNG cost accelerates sharply between chem16 and chem8.
+- **Updated canonical defaults**:
+  - canonical-CSP = chem8
+  - canonical-DNG = baseline (or chem16 if any CSP needed)
+  - **canonical-joint = chem16** ← new
+- **Numbers in literature ballpark**:
+  - baseline & chem16 ≈ MiAD paper S·U·Nv (11-12%)
+  - chem8 ≈ DiffCSP paper S·U·Nv (7-8%)
