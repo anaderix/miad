@@ -708,3 +708,16 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Numbers in literature ballpark**:
   - baseline & chem16 ≈ MiAD paper S·U·Nv (11-12%)
   - chem8 ≈ DiffCSP paper S·U·Nv (7-8%)
+
+## 2026-05-20 — TASK chem2-S: trade-off curve completed; chem2 = worst DNG (6.5%)
+
+- **Setup**: chem2_50k DNG-relax (sharp chemistry endpoint). Same pipeline.
+- **Result**: S~·U·Nv = **6.5%** — lowest of all variants tested. Below DiffCSP paper level (7-8%).
+- **Convergence drops to 9%** (baseline 20.5%, chem8 15.5%, chem16 17.5%). Mean force jumps to 7.66 eV/Å. Sharp chem creates extreme strain.
+- **Full curve**: chem2 6.5 → chem8 8.5 → chem16 11.5 → baseline 12.5 (S~·U·Nv monotonic in chem_temp). CSP non-monotonic with peak at chem8.
+- **chem2 is strictly dominated by chem8**: lower CSP (20.5 vs 22.5) AND lower DNG (6.5 vs 8.5). Only N=4-specialist case where chem2 wins (per old chem-sweep, N=4 = 79%).
+- **Final canonical defaults**:
+  - canonical-CSP = chem8 (22.5%)
+  - canonical-DNG = baseline (12.5%, ≈MiAD paper)
+  - canonical-joint = chem16 (19.5% × 11.5%, dominates other variants on CSP×DNG product)
+- **Mechanism fully validated**: smoothness↔precision trade-off. Sharper chem → higher per-atom precision → strain → unrelaxable.
