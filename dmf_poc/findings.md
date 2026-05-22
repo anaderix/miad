@@ -721,3 +721,17 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
   - canonical-DNG = baseline (12.5%, ≈MiAD paper)
   - canonical-joint = chem16 (19.5% × 11.5%, dominates other variants on CSP×DNG product)
 - **Mechanism fully validated**: smoothness↔precision trade-off. Sharper chem → higher per-atom precision → strain → unrelaxable.
+
+## 2026-05-23 — TASK chem8-repel-sweep: repulsion is load-bearing structural prior
+
+- **Setup**: chem8 with repulsion ∈ {0, 0.5, 1.0}. Same DNG-relax pipeline.
+- **Catastrophic result for r=0**: S~·U·Nv = **0.5%** (1/200), mean force = **70.31 eV/Å** (vs 6-7 for other variants), convergence 2.5%. Structures essentially explode.
+- **r=0.5**: intermediate — S~·U·Nv = 6.5%, mean force = 6.27. Closer to r=1 than to r=0.
+- **r=1 (canonical)**: best — S~·U·Nv = 8.5%, mean force = 7.34.
+- **Mechanism**: pure chem-attraction V (without repulsion subtraction) collapses atoms into impossibly-close convex combinations of conflicting target structures (mode-shift toward incompatible train targets sharing same composition). Repulsion = V_attract − r·V_repel subtracts the self-agreement component → mode-spreading.
+- **Reframed picture**: TWO independent factors:
+  1. **chem_temp** = CSP↔DNG trade-off (specificity vs averaging)
+  2. **repulsion** = physical-plausibility floor (without it, V's drift creates impossible structures)
+- **Major paper insight**: repulsion is not optional — anti-mode-seeking term is the structural floor that makes any DMF variant viable. The CSP-DNG trade-off through chem_temp only holds at r=1.
+- **Canonical defaults locked**: never use r=0; chem8 for CSP, baseline for DNG, chem16 for joint.
+- **Untested predictions**: baseline + r=0 should be much less catastrophic; chem2 + r=0 even worse than chem8 + r=0.
