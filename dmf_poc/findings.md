@@ -746,3 +746,23 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **MAJOR PAPER-LEVEL UPDATE**: our baseline matches DiffCSP under real metric. Trade-off curve ordering preserved (chem8 < chem16 < baseline by DNG) but absolute scale halved.
 - **Gap to MiAD remains** (6.5% vs 11-12%): need longer training, mirage infusion (not in our PoC), and/or bigger n_gen. Knob tuning alone won't close 2× gap.
 - **Updated canonical real numbers**: baseline = 6.5%, chem8 = 4.5%. chem16/chem2 real ehull pending (~6h each).
+
+## 2026-05-23 — Real-Ehull curve complete (4 chem_temp points)
+
+- Added chem2 + chem16 real-Ehull evals. Full curve in real metric (E_above_hull ≤ 0.08 via MP convex hull):
+
+| Variant | CSP @20 | converged | real S | real S·U·Nv |
+|---|---:|---:|---:|---:|
+| baseline | 15.5% | 21.0% | 10.5% | 6.5% |
+| chem16 | 19.5% | 16.5% | 9.0% | 5.5% |
+| chem8 | 22.5% | 15.0% | 5.5% | 4.5% |
+| chem2 | 20.5% | 7.5% | 5.0% | 3.5% |
+
+- **Monotonic CSP↔DNG trade-off in chem_temp** preserved under real metric (proxy ordering was correct).
+- **chem16 joint Pareto winner** under real metric too: CSP×DNG product = 1.07 (vs baseline 1.01, chem8 1.01, chem2 0.72).
+- **chem2 strictly dominated by chem8** (lower CSP 20.5 vs 22.5 AND lower DNG 3.5 vs 4.5%). Same conclusion as proxy.
+- **Real S~ values are ~2× smaller than proxy** across the board, with absolute baseline-vs-MiAD gap clearer: we're at DiffCSP-level on DNG, ~2× behind MiAD.
+- **Final canonical defaults LOCKED under real metric**:
+  - **canonical-CSP** = chem8 (22.5% match@20)
+  - **canonical-DNG** = baseline (real S·U·Nv = 6.5%, ≈DiffCSP-paper)
+  - **canonical-joint** = chem16 (CSP×DNG product 1.07 — best joint score)
