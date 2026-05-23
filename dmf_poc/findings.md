@@ -735,3 +735,14 @@ Convex curve с чёткой вершиной. Saturated past 1.0 — slightly o
 - **Major paper insight**: repulsion is not optional — anti-mode-seeking term is the structural floor that makes any DMF variant viable. The CSP-DNG trade-off through chem_temp only holds at r=1.
 - **Canonical defaults locked**: never use r=0; chem8 for CSP, baseline for DNG, chem16 for joint.
 - **Untested predictions**: baseline + r=0 should be much less catastrophic; chem2 + r=0 even worse than chem8 + r=0.
+
+## 2026-05-23 — TASK real-Ehull: proxy was 2× overestimate; baseline ≈ DiffCSP
+
+- **Setup**: chem8 + baseline DNG-relax with real E_above_hull via MP convex hull (`2023-02-07-ppd-mp.pkl`, 154k entries). Stability = converged ∧ E_hull ≤ 0.08 eV/atom.
+- **Real numbers**: baseline **S·U·Nv = 6.5%** (vs proxy 12.5%), chem8 **S·U·Nv = 4.5%** (vs proxy 8.5%). Proxy systematically 2× high.
+- **vs paper**: DiffCSP S·U·Nv = 7-8%, MiAD = 11-12%. **Baseline DMF essentially matches DiffCSP-paper** (6.5% vs 7-8%, within n=200 noise).
+- **Mean E_above_hull (converged)**: baseline 0.38 eV/atom (4.7× above threshold), chem8 1.36 (17×). Confirms chem-attraction lands at high-energy local minima.
+- **Proxy bias mechanism**: "ΔE within 0.3 eV vs train-baseline-of-same-composition" is too loose AND doesn't reference the convex hull. Train structures themselves often above hull.
+- **MAJOR PAPER-LEVEL UPDATE**: our baseline matches DiffCSP under real metric. Trade-off curve ordering preserved (chem8 < chem16 < baseline by DNG) but absolute scale halved.
+- **Gap to MiAD remains** (6.5% vs 11-12%): need longer training, mirage infusion (not in our PoC), and/or bigger n_gen. Knob tuning alone won't close 2× gap.
+- **Updated canonical real numbers**: baseline = 6.5%, chem8 = 4.5%. chem16/chem2 real ehull pending (~6h each).
